@@ -1,6 +1,94 @@
 const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
+
+// Function to detect Chrome executable path based on OS and architecture
+const getChromeExecutablePath = () => {
+  const platform = os.platform();
+  const arch = os.arch();
+
+  if (platform === "win32") {
+    // Windows paths for both x64 and x86
+    const chromePaths = [
+      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", // x64
+      "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe", // x86
+      "C:\\Users\\%USERNAME%\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe", // User install
+    ];
+
+    // Check which Chrome installation exists
+    for (const chromePath of chromePaths) {
+      const expandedPath = chromePath.replace(
+        "%USERNAME%",
+        os.userInfo().username
+      );
+      if (fs.existsSync(expandedPath)) {
+        return expandedPath;
+      }
+    }
+  } else if (platform === "darwin") {
+    // macOS paths
+    const chromePaths = [
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    ];
+
+    for (const chromePath of chromePaths) {
+      if (fs.existsSync(chromePath)) {
+        return chromePath;
+      }
+    }
+  } else if (platform === "linux") {
+    // Linux paths
+    const chromePaths = [
+      "/usr/bin/google-chrome",
+      "/usr/bin/google-chrome-stable",
+      "/usr/bin/chromium",
+      "/usr/bin/chromium-browser",
+      "/snap/bin/chromium",
+    ];
+
+    for (const chromePath of chromePaths) {
+      if (fs.existsSync(chromePath)) {
+        return chromePath;
+      }
+    }
+  }
+
+  // If no Chrome found, return null to use Puppeteer's bundled Chromium
+  console.warn(
+    "No Chrome installation found, falling back to bundled Chromium"
+  );
+  return null;
+};
+
+// Common Puppeteer launch options
+const getPuppeteerOptions = (headless = false) => {
+  const chromeExecutablePath = getChromeExecutablePath();
+
+  const baseOptions = {
+    headless: headless,
+    slowMo: 30,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-web-security",
+      "--disable-features=VizDisplayCompositor",
+      "--disable-background-timer-throttling",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-renderer-backgrounding",
+    ],
+  };
+
+  // Add Chrome-specific options if Chrome is found
+  if (chromeExecutablePath) {
+    baseOptions.executablePath = chromeExecutablePath;
+    baseOptions.channel = "chrome";
+  }
+
+  return baseOptions;
+};
 
 //prepare data to add to database
 const addToDatabase = async (posts, tags, userInfo) => {
@@ -35,15 +123,8 @@ const scrollPage = async (page, maxScroll = 5, delay = 500) => {
 module.exports.getPostsFromTags = async (req, res, next) => {
   try {
     const { tags } = req.body;
-    const browser = await puppeteer.launch({
-      headless: false,
-      slowMo: 30,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-      ],
-    });
+
+    const browser = await puppeteer.launch(getPuppeteerOptions(false));
 
     const page = await browser.newPage();
     await page.setUserAgent(
@@ -53,11 +134,11 @@ module.exports.getPostsFromTags = async (req, res, next) => {
 
     const url = `https://www.tiktok.com/tag/${tags}`;
     await page.goto(url, {
-      // waitUntil: "networkidle2",
-      // timeout: 120000,
+      waitUntil: "networkidle2",
+      timeout: 120000,
     });
 
-    await page.waitForSelector("p.user-name");
+    await page.waitForSelector("p.user-name", { timeout: 30000 });
 
     // Scroll from Node.js side (not inside page context)
     // await scrollPage(page, 10, 600);
@@ -158,7 +239,6 @@ module.exports.getPostsFromTags = async (req, res, next) => {
     res.json({ data, finalData });
   } catch (error) {
     console.error("Scraping error:", error);
-
     next(error);
   }
 };
@@ -168,27 +248,19 @@ module.exports.getUserInfo = async (req, res, next) => {
   try {
     const { username } = req.body;
 
-    const browser = await puppeteer.launch({
-      headless: true, // Debug mode
-      // slowMo: 30,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        //   "--disable-dev-shm-usage",
-      ],
-    });
+    const browser = await puppeteer.launch(getPuppeteerOptions(true));
 
     const page = await browser.newPage();
-    // await page.setUserAgent(
-    //   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
-    // );
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+    );
     await page.setViewport({ width: 1366, height: 768 });
     await page.goto(`https://www.tiktok.com/@${username}`, {
-      // waitUntil: "networkidle2",
+      waitUntil: "networkidle2",
       timeout: 20000,
     });
 
-    await page.waitForSelector(`[data-e2e="likes-count"`);
+    await page.waitForSelector(`[data-e2e="likes-count"]`, { timeout: 30000 });
 
     const data = await page.evaluate(async () => {
       const followingEl = document.querySelector(
