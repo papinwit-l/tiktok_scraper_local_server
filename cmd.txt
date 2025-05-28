@@ -1,0 +1,1 @@
+nexe --build server.js --exclude rimraf --target windows-x64 -o server.exe

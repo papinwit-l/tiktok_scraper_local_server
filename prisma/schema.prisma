@@ -1,0 +1,58 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model TiktokTag {
+  id          Int      @id @default(autoincrement())
+  name        String
+  post_number String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  TiktokUserTag TiktokUserTag[]
+}
+
+model TiktokUser {
+  id         Int      @id @default(autoincrement())
+  username   String
+  avatar     String?  @db.LongText
+  tiktok_src String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  followers  String?
+  following  String?
+  likes      String?
+
+  TiktokUserTag TiktokUserTag[]
+}
+
+model TiktokUserTag {
+  id         Int        @id @default(autoincrement())
+  user_id    Int
+  tag_id     Int
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+  user       TiktokUser @relation(fields: [user_id], references: [id])
+  tag        TiktokTag  @relation(fields: [tag_id], references: [id])
+}
+
+model tiktokUserTagSyncError {
+  id         Int      @id @default(autoincrement())
+  tiktok_src String
+  tag        String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  error      String?
+}
