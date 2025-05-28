@@ -2,6 +2,7 @@ const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
 
+//prepare data to add to database
 const addToDatabase = async (posts, tags, userInfo) => {
   const uniqueUserInfo = [
     ...new Map(userInfo.map((item) => [item.username, item])).values(),
@@ -30,6 +31,7 @@ const scrollPage = async (page, maxScroll = 5, delay = 500) => {
   }
 };
 
+//get user from tiktok tag
 module.exports.getPostsFromTags = async (req, res, next) => {
   try {
     const { tags } = req.body;
@@ -161,6 +163,7 @@ module.exports.getPostsFromTags = async (req, res, next) => {
   }
 };
 
+//get user info
 module.exports.getUserInfo = async (req, res, next) => {
   try {
     const { username } = req.body;
