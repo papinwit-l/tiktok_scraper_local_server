@@ -135,7 +135,7 @@ module.exports.getPostsFromTags = async (req, res, next) => {
     const url = `https://www.tiktok.com/tag/${tags}`;
     await page.goto(url, {
       waitUntil: "networkidle2",
-      timeout: 120000,
+      timeout: 600000,
     });
 
     await page.waitForSelector("p.user-name", { timeout: 30000 });
