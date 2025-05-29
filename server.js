@@ -77,9 +77,12 @@ app.use("/tiktok", tiktokRoute);
 app.use(express.static(path.join(baseDir, "client-dist")));
 
 // ✅ SPA Fallback
-app.get(["/", "/get-tags", "/view-tags", "/view-all-users"], (req, res) => {
-  res.sendFile(path.join(baseDir, "client-dist/index.html"));
-});
+app.get(
+  ["/", "/get-tags", "/view-tags", "/view-all-users", "/sync-and-export"],
+  (req, res) => {
+    res.sendFile(path.join(baseDir, "client-dist/index.html"));
+  }
+);
 
 // ✅ Error Middleware
 app.use(errorMiddleware);
