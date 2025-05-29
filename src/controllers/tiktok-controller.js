@@ -276,7 +276,10 @@ module.exports.getUserInfo = async (req, res, next) => {
       const likesEl = document.querySelector(`[data-e2e="likes-count"]`);
       const likes = likesEl ? likesEl.textContent.trim() : null;
 
-      return { following, followers, likes };
+      const avatarEl = document.querySelector(`[loading="lazy"]`);
+      const avatar = avatarEl ? avatarEl.getAttribute("src") : null;
+
+      return { following, followers, likes, avatar };
     });
     await browser.close();
 
