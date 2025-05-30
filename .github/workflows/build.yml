@@ -1,4 +1,4 @@
-name: Build Binaries
+name: Build macOS Binary
 
 on:
   push:
@@ -7,28 +7,9 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: linux-x64
-            ext: ""
-            outfile: server
-            buildFlag: ""
-          - os: windows-latest
-            target: windows-x64
-            ext: ".exe"
-            outfile: server.exe
-            buildFlag: ""
-          - os: macos-latest
-            target: mac-x64
-            ext: ""
-            outfile: server
-            buildFlag: "--build"
+  build-macos:
+    name: Build on macOS
+    runs-on: macos-latest
 
     steps:
       - name: Checkout Repository
@@ -37,15 +18,16 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Compile with Nexe
+      - name: Build Binary with Nexe
         run: |
-          npx nexe index.js \
-            -t ${{ matrix.target }} \
-            -o build/${{ matrix.outfile }} \
-            ${{ matrix.buildFlag }}
+          npx nexe server.js \
+            --build \
+            --exclude rimraf \
+            --target mac-x64 \
+            -o build/server
 
-      - name: Upload Binary Artifact
+      - name: Upload macOS Binary
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-binary
-          path: build/${{ matrix.outfile }}
+          name: macos-binary
+          path: build/server
