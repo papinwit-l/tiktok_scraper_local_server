@@ -1,45 +1,51 @@
-name: Build Nexe Binaries
+name: Build Binaries
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
+    name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
             target: linux-x64
             ext: ""
+            outfile: server
+            buildFlag: ""
           - os: windows-latest
             target: windows-x64
             ext: ".exe"
+            outfile: server.exe
+            buildFlag: ""
           - os: macos-latest
             target: mac-x64
             ext: ""
             outfile: server
-            custom: "npx nexe server.js --build -t mac-x64 -o build/server"
+            buildFlag: "--build"
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
+      - name: Install Dependencies
+        run: npm install
 
-      - run: npm install
-
-      - name: Build with Nexe
+      - name: Compile with Nexe
         run: |
-          npx nexe index.js -t ${{ matrix.target }} -o build/output${{ matrix.ext }}
+          npx nexe index.js \
+            -t ${{ matrix.target }} \
+            -o build/${{ matrix.outfile }} \
+            ${{ matrix.buildFlag }}
 
-      - name: Upload binary artifact
+      - name: Upload Binary Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-binary
-          path: build/output${{ matrix.ext }}
+          name: ${{ matrix.os }}-binary
+          path: build/${{ matrix.outfile }}
