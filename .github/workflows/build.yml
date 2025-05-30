@@ -21,6 +21,8 @@ jobs:
           - os: macos-latest
             target: mac-x64
             ext: ""
+            outfile: server
+            custom: "npx nexe server.js --build -t mac-x64 -o build/server"
 
     steps:
       - uses: actions/checkout@v3
