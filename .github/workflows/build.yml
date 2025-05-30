@@ -16,13 +16,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'  # Use Node 18 for better nexe compatibility
           cache: 'npm'
           
-      - name: Install Xcode Command Line Tools
+      - name: Install build tools
         run: |
-          xcode-select --install || true
-          sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+          # Install Xcode command line tools
+          sudo xcode-select --install || true
+          sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer || true
+          # Install python for node-gyp
+          brew install python@3.11
           
       - name: Install Dependencies
         run: npm ci
@@ -30,16 +33,41 @@ jobs:
       - name: Create build directory
         run: mkdir -p build
         
-      - name: Build Binary with Nexe
-        run: npx nexe --build server.js --exclude rimraf --target mac-x64 -o build/server
+      - name: Build with nexe (Method 1 - Stable version)
+        run: |
+          npx nexe@4.0.0-rc.6 --build server.js \
+            --exclude rimraf \
+            --target mac-x64-18.20.4 \
+            --output build/server \
+            --verbose
+        continue-on-error: true
+        id: nexe-stable
+        
+      - name: Build with nexe (Method 2 - Different target)
+        if: steps.nexe-stable.outcome == 'failure'
+        run: |
+          npx nexe@4.0.0-rc.6 --build server.js \
+            --exclude rimraf \
+            --target mac-x64-16.20.2 \
+            --output build/server \
+            --make -j1
+        continue-on-error: true
+        id: nexe-alt
+        
+      - name: Fallback to pkg
+        if: steps.nexe-stable.outcome == 'failure' && steps.nexe-alt.outcome == 'failure'
+        run: |
+          npm install -g pkg
+          pkg server.js --target node18-macos-x64 --output build/server
           
       - name: Verify Binary
         run: |
           if [ -f build/server ]; then
             ls -la build/server
             file build/server
+            echo "✅ Binary created successfully"
           else
-            echo "Binary not created"
+            echo "❌ Binary creation failed"
             exit 1
           fi
           
