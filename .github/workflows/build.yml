@@ -1,5 +1,4 @@
 name: Build macOS Binary
-
 on:
   push:
     branches: [ main ]
@@ -10,22 +9,40 @@ jobs:
   build-macos:
     name: Build on macOS
     runs-on: macos-latest
-
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build Binary with Nexe
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install Xcode Command Line Tools
         run: |
-          npx nexe server.js \
-            --build \
-            --exclude rimraf \
-            --target mac-x64 \
-            -o build/server
-
+          xcode-select --install || true
+          sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Create build directory
+        run: mkdir -p build
+        
+      - name: Build Binary with Nexe
+        run: npx nexe --build server.js --exclude rimraf --target mac-x64 -o build/server
+          
+      - name: Verify Binary
+        run: |
+          if [ -f build/server ]; then
+            ls -la build/server
+            file build/server
+          else
+            echo "Binary not created"
+            exit 1
+          fi
+          
       - name: Upload macOS Binary
         uses: actions/upload-artifact@v4
         with:
